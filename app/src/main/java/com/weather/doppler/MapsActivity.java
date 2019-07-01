@@ -1,9 +1,12 @@
 package com.weather.doppler;
-
+import android.app.Activity;
+import android.content.Context;
 import android.os.Bundle;
-
+import android.os.Looper;
+import androidx.annotation.MainThread;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.fragment.app.FragmentActivity;
-
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -14,27 +17,195 @@ import com.google.android.gms.maps.model.TileOverlay;
 import com.google.android.gms.maps.model.TileOverlayOptions;
 import com.google.android.gms.maps.model.TileProvider;
 import com.google.android.gms.maps.model.UrlTileProvider;
-
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.Instant;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
+    private int animationIterator;
     private GoogleMap mMap;
+    private long lastUpdateTimeStamp;
+    private Timer timer;
+    private Timer animationTimer;
+    private Timer waitLoadInTimer;
+    private TimerTask timerTask;
+    private TimerTask animationTimerTask;
+    private TileOverlay tileOverlay;
+    private TileOverlay[] tileOverlays;
+
+    public long getLastTenMinutes(){
+
+        long timeStamp = Instant.now().getEpochSecond();
+        timeStamp = timeStamp - (timeStamp % 600);
+        return timeStamp;
+
+}
+
+public void animateMap(Activity activity) {
+
+    activity.runOnUiThread(new Runnable() {
+        public void run() {
+
+            for (int i = 0; i < tileOverlays.length; i++) {
+                if (tileOverlays[i].isVisible() && i < tileOverlays.length - 1) {
+                    tileOverlays[i].setVisible(false);
+                    tileOverlays[i].setTransparency(1);
+                    tileOverlays[i + 1].setVisible(true);
+                    tileOverlays[i + 1].setTransparency(0);
+                    break;
+                } else if (tileOverlays[i].isVisible() && i == tileOverlays.length - 1) {
+                    tileOverlays[i].setVisible(false);
+                    tileOverlays[0].setVisible(true);
+                    tileOverlays[i].setTransparency(1);
+                    tileOverlays[0].setTransparency(0);
+                    break;
+                }
+            }
+        }
+    });
+
+}
+
+public TileProvider buildTileProvider(final long timeStamp) {
+    TileProvider tileProvider = new UrlTileProvider(256, 256) {
+        @Override
+        public URL getTileUrl(int x, int y, int zoom) {
+
+            /* Define the URL pattern for the tile images */
+            //https://tilecache.rainviewer.com/v2/radar/1561885800/512/2/1/1/2/1_1.png
+         //   long timeStamp = Instant.now().getEpochSecond();
+          //  timeStamp = timeStamp - (timeStamp % 600);
+           // lastUpdateTimeStamp = timeStamp;
 
 
+            String s = String.format("https://tilecache.rainviewer.com/v2/radar/%d/256/%d/%d/%d/2/1_1.png",
+                    timeStamp,zoom, x, y);
+
+            if (!checkTileExists(x, y, zoom)) {
+                return null;
+            }
+
+            try {
+                return new URL(s);
+            } catch (MalformedURLException e) {
+                throw new AssertionError(e);
+            }
+        }
+
+        /*
+         * Check that the tile server supports the requested x, y and zoom.
+         * Complete this stub according to the tile range you support.
+         * If you support a limited range of tiles at different zoom levels, then you
+         * need to define the supported x, y range at each zoom level.
+         */
+        private boolean checkTileExists(int x, int y, int zoom) {
+            int minZoom = 0;
+            int maxZoom = 16;
+
+            if ((zoom < minZoom || zoom > maxZoom)) {
+                return false;
+            }
+
+            return true;
+        }
+    };
+
+    return tileProvider;
+
+}
+
+    public void updateMap(Activity activity) {
+
+
+        long timeStamp = getLastTenMinutes();
+
+        if (timeStamp > lastUpdateTimeStamp && tileOverlay != null) {
+
+            activity.runOnUiThread(new Runnable() {
+                public void run() {
+                    for(TileOverlay tile:tileOverlays)
+                        tile.clearTileCache();
+
+
+                }
+            });
+        }
+    }
+
+    public void onPause(){
+        super.onPause();
+        animationTimer.cancel();
+        timer.cancel();
+        //TODO: need to pause the animation and also resume in the resume method.
+    }
+
+    public void onResume(){
+        super.onResume();
+        try {
+                //TODO: Add last 2 hours as series of tiles to the map, all visibility set to false instead of the current tile.
+            //TODO: Need a loop here that is the animation loop, need to pause the animation loop on pause.
+
+            //update map if resuming app after over 10 minutes away.
+            if( lastUpdateTimeStamp < getLastTenMinutes()) {
+                updateMap(MapsActivity.this);
+            }
+
+            animationTimer = new Timer();
+            animationTimerTask = new TimerTask(){
+                @Override
+                public void run() {
+                    animateMap(MapsActivity.this);
+                }
+            };
+
+
+
+
+
+
+            timer = new Timer();
+            timerTask = new TimerTask() {
+                @Override
+                public void run() {
+
+try {
+
+    long timeStamp = getLastTenMinutes();
+
+    if (timeStamp > lastUpdateTimeStamp) {
+
+    updateMap(MapsActivity.this);
+    lastUpdateTimeStamp = timeStamp;
+
+    }
+}
+                    catch(Exception ex){
+    ex.printStackTrace();
+                    }
+                }
+            };
+            timer.schedule(timerTask, 30000, 30000);
+            timer.schedule(animationTimerTask, 100,100);
+
+        } catch (IllegalStateException e){
+            android.util.Log.i("Dang:", "resume error");
+        }
+    }
+
+
+
+
+
+//tileOverlay.clearTileCache(); every ten minutes.
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-
-
-
-
-
-
-
-
 
 
         setContentView(R.layout.activity_maps);
@@ -59,51 +230,51 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap = googleMap;
 
 
+        TileProvider tileProvider = buildTileProvider(getLastTenMinutes()-6000);
+        TileProvider tileProvider2 = buildTileProvider(getLastTenMinutes()-5400);
+        TileProvider tileProvider3 = buildTileProvider(getLastTenMinutes()-4800);
+        TileProvider tileProvider4 = buildTileProvider(getLastTenMinutes()-4200);
+        TileProvider tileProvider5 = buildTileProvider(getLastTenMinutes()-3600);
+        TileProvider tileProvider6 = buildTileProvider(getLastTenMinutes()-3000);
+        TileProvider tileProvider7 = buildTileProvider(getLastTenMinutes()-2400);
+        TileProvider tileProvider8 = buildTileProvider(getLastTenMinutes()-1800);
+        TileProvider tileProvider9 = buildTileProvider(getLastTenMinutes()-1200);
+        TileProvider tileProvider10 = buildTileProvider(getLastTenMinutes()-600);
+        TileProvider tileProvider11 = buildTileProvider(getLastTenMinutes());
 
-        TileProvider tileProvider = new UrlTileProvider(256, 256) {
-            @Override
-            public URL getTileUrl(int x, int y, int zoom) {
 
-                /* Define the URL pattern for the tile images */
-                //https://tilecache.rainviewer.com/v2/radar/1561885800/512/2/1/1/2/1_1.png
-                long timeStamp = Instant.now().getEpochSecond();
-                timeStamp = timeStamp - (timeStamp % 600);
+        TileProvider[] tileProvidersArray = new TileProvider[]{tileProvider,tileProvider2,tileProvider3,tileProvider4,tileProvider5,tileProvider6,tileProvider7,tileProvider8,tileProvider9,tileProvider10,tileProvider11};
 
-                String s = String.format("https://tilecache.rainviewer.com/v2/radar/%d/256/%d/%d/%d/2/1_1.png",
-                        timeStamp,zoom, x, y);
+        TileOverlay[] tileOverlaysArray = new TileOverlay[tileProvidersArray.length];
 
-                if (!checkTileExists(x, y, zoom)) {
-                    return null;
-                }
 
-                try {
-                    return new URL(s);
-                } catch (MalformedURLException e) {
-                    throw new AssertionError(e);
-                }
-            }
-
-            /*
-             * Check that the tile server supports the requested x, y and zoom.
-             * Complete this stub according to the tile range you support.
-             * If you support a limited range of tiles at different zoom levels, then you
-             * need to define the supported x, y range at each zoom level.
-             */
-            private boolean checkTileExists(int x, int y, int zoom) {
-                int minZoom = 0;
-                int maxZoom = 16;
-
-                if ((zoom < minZoom || zoom > maxZoom)) {
-                    return false;
-                }
-
-                return true;
-            }
-        };
 
         try {
-            TileOverlay tileOverlay = mMap.addTileOverlay(new TileOverlayOptions()
-                    .tileProvider(tileProvider));
+            for (int i = 0; i < tileProvidersArray.length; i++) {
+                tileOverlay = mMap.addTileOverlay(new TileOverlayOptions()
+                        .tileProvider(tileProvidersArray[i]));
+
+
+                tileOverlay.setFadeIn(true);
+                tileOverlay.setVisible(true);
+                tileOverlay.setTransparency(1);
+
+          if(i == 0)
+              tileOverlay.setTransparency(0);
+    //            else
+      //              tileOverlay.setVisible(false);
+                tileOverlaysArray[i] = tileOverlay;
+
+            }
+
+            tileOverlays = tileOverlaysArray;
+//TODO: add animate tileOverlays method.
+           // tileOverlay = mMap.addTileOverlay(new TileOverlayOptions()
+               //     .tileProvider(tileProvider2));
+           // tileOverlay = mMap.addTileOverlay(new TileOverlayOptions()
+                //  .tileProvider(tileProvider3));
+          // tileOverlay = mMap.addTileOverlay(new TileOverlayOptions()
+                  //  .tileProvider(tileProvider4));
         }
         catch(Exception ex) {
             ex.printStackTrace();
@@ -114,5 +285,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         LatLng sydney = new LatLng(-34, 151);
         mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
         mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
+
+
+
+        }
     }
-}
+
