@@ -15,6 +15,9 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentActivity;
+
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -26,6 +29,8 @@ import com.google.android.gms.maps.model.TileOverlay;
 import com.google.android.gms.maps.model.TileOverlayOptions;
 import com.google.android.gms.maps.model.TileProvider;
 import com.google.android.gms.maps.model.UrlTileProvider;
+import com.google.android.gms.tasks.OnSuccessListener;
+
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.Instant;
@@ -53,6 +58,7 @@ public class MapsActivity extends AppCompatActivity implements GoogleMap.OnMyLoc
     private TimerTask animationTimerTask;
     private TileOverlay tileOverlay;
     private TileOverlay[] tileOverlays;
+    private FusedLocationProviderClient fusedLocationClient;
 
     public long getLastTenMinutes(){
 
@@ -222,7 +228,7 @@ try {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
         setContentView(R.layout.activity_maps);
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
@@ -338,7 +344,25 @@ catch(Exception ex){
         Toast.makeText(this, "MyLocation button clicked", Toast.LENGTH_SHORT).show();
         // Return false so that we don't consume the event and the default behavior still occurs
         // (the camera animates to the user's current position).
-        return false;
+        try {
+            fusedLocationClient.getLastLocation()
+                    .addOnSuccessListener(this, new OnSuccessListener<Location>() {
+                        @Override
+                        public void onSuccess(Location location) {
+                            // Got last known location. In some rare situations this can be null.
+                            if (location != null) {
+                                // Logic to handle location object
+
+                                mMap.moveCamera(CameraUpdateFactory.newLatLng(new LatLng(location.getLatitude(),location.getLongitude())));
+                                mMap.moveCamera(CameraUpdateFactory.zoomTo(5));
+                            }
+                        }
+                    });
+        }
+        catch(SecurityException ex) {
+            ex.printStackTrace();
+        }
+        return true;
     }
 
     @Override
