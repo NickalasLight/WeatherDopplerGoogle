@@ -22,6 +22,7 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MapStyleOptions;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -59,6 +60,7 @@ public class MapsActivity extends AppCompatActivity implements GoogleMap.OnMyLoc
     private TileOverlay tileOverlay;
     private TileOverlay[] tileOverlays;
     private FusedLocationProviderClient fusedLocationClient;
+    private CameraPosition mlastCameraPosition;
 
     public long getLastTenMinutes(){
 
@@ -67,27 +69,41 @@ public class MapsActivity extends AppCompatActivity implements GoogleMap.OnMyLoc
         return timeStamp;
 
 }
+public boolean allTilesLoaded(){
+
+    //for (int i = 0; i < tileOverlays.length; i++) {
+    //    if(!tileOverlays[i].isVisible()){
+    //        return false;
+     //   }
+   // }
+
+    return true;
+}
 
 public void animateMap(Activity activity) {
 
     activity.runOnUiThread(new Runnable() {
         public void run() {
 
-            for (int i = 0; i < tileOverlays.length; i++) {
-                if (tileOverlays[i].isVisible() && i < tileOverlays.length - 1) {
-                    tileOverlays[i].setVisible(false);
-                    tileOverlays[i].setTransparency(1);
-                    tileOverlays[i + 1].setVisible(true);
-                    tileOverlays[i + 1].setTransparency(0);
-                    break;
-                } else if (tileOverlays[i].isVisible() && i == tileOverlays.length - 1) {
-                    tileOverlays[i].setVisible(false);
-                    tileOverlays[0].setVisible(true);
-                    tileOverlays[i].setTransparency(1);
-                    tileOverlays[0].setTransparency(0);
-                    break;
+            if(allTilesLoaded()) {
+                for (int i = 0; i < tileOverlays.length; i++) {
+
+                    if (tileOverlays[i].getTransparency()== 0 && i < tileOverlays.length - 1) {
+                        //tileOverlays[i].setVisible(false);
+                        tileOverlays[i].setTransparency(1);
+                        //tileOverlays[i + 1].setVisible(true);
+                        tileOverlays[i + 1].setTransparency(0);
+                        break;
+                    } else if (tileOverlays[i].getTransparency()==0 && i == tileOverlays.length - 1) {
+                       // tileOverlays[i].setVisible(false);
+                       // tileOverlays[0].setVisible(true);
+                        tileOverlays[i].setTransparency(1);
+                        tileOverlays[0].setTransparency(0);
+                        break;
+                    }
                 }
             }
+
         }
     });
 
@@ -163,14 +179,16 @@ public TileProvider buildTileProvider(final long timeStamp) {
         super.onPause();
         animationTimer.cancel();
         timer.cancel();
-        //TODO: need to pause the animation and also resume in the resume method.
+        mMap.stopAnimation();
+        mlastCameraPosition = mMap.getCameraPosition();
+        //TODO: Save last camera position to a file used by the application. onfinish() destroys the activity, so save
     }
 
     public void onResume(){
         super.onResume();
         try {
-                //TODO: Add last 2 hours as series of tiles to the map, all visibility set to false instead of the current tile.
-            //TODO: Need a loop here that is the animation loop, need to pause the animation loop on pause.
+            if(mlastCameraPosition != null){
+            mMap.moveCamera(CameraUpdateFactory.newCameraPosition(mlastCameraPosition));}
 
             //update map if resuming app after over 10 minutes away.
             if( lastUpdateTimeStamp < getLastTenMinutes()) {
@@ -181,14 +199,10 @@ public TileProvider buildTileProvider(final long timeStamp) {
             animationTimerTask = new TimerTask(){
                 @Override
                 public void run() {
+
                     animateMap(MapsActivity.this);
                 }
             };
-
-
-
-
-
 
             timer = new Timer();
             timerTask = new TimerTask() {
@@ -212,11 +226,16 @@ try {
                 }
             };
             timer.schedule(timerTask, 30000, 30000);
-            timer.schedule(animationTimerTask, 100,100);
+            timer.schedule(animationTimerTask, 150,150);
 
         } catch (IllegalStateException e){
             android.util.Log.i("Dang:", "resume error");
         }
+    }
+
+    public void onStop(){
+        super.onStop();
+        finish();
     }
 
 
