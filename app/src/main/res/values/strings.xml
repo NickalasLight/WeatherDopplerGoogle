@@ -4,4 +4,9 @@
     <string name = "permission_required_toast">permission required</string>
     <string name= "location_permission_denied">permission denied</string>
     <string name="permission_rationale_location">permission rationale</string>
+    <string name="saved_camera_lat">saved_camera_lat</string>
+    <string name="saved_camera_long">saved_camera_long</string>
+    <string name="saved_camera_zoom">saved_camera_zoom</string>
+    <string name="saved_camera_tilt">saved_camera_tilt</string>
+    <string name="saved_camera_bearing">saved_camera_bearing</string>
 </resources>

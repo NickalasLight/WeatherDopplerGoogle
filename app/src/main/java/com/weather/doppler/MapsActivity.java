@@ -2,6 +2,7 @@ package com.weather.doppler;
 import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
@@ -180,14 +181,33 @@ public TileProvider buildTileProvider(final long timeStamp) {
         animationTimer.cancel();
         timer.cancel();
         mMap.stopAnimation();
-        mlastCameraPosition = mMap.getCameraPosition();
+       // mlastCameraPosition = mMap.getCameraPosition();
         //TODO: Save last camera position to a file used by the application. onfinish() destroys the activity, so save
     }
 
     public void onResume(){
         super.onResume();
         try {
-            if(mlastCameraPosition != null){
+
+
+try {
+
+    Context context = getApplicationContext();
+    SharedPreferences sharedPref = context.getSharedPreferences("TEST_PREF",Context.MODE_PRIVATE);
+
+    Double latitude = Double.parseDouble(sharedPref.getString(getString(R.string.saved_camera_lat),"0.0"));
+    Double longitude =  Double.parseDouble(sharedPref.getString(getString(R.string.saved_camera_long),"0.0"));
+    float zoom = Float.parseFloat(sharedPref.getString(getString(R.string.saved_camera_zoom),"0.0"));
+    float bearing = Float.parseFloat(sharedPref.getString(getString(R.string.saved_camera_bearing),"0.0"));
+    float tilt = Float.parseFloat(sharedPref.getString(getString(R.string.saved_camera_tilt),"0.0"));
+
+   mlastCameraPosition = new CameraPosition(new LatLng(latitude, longitude), zoom, tilt, bearing);
+}
+catch(
+        Exception ex){ex.printStackTrace();
+}
+
+            if(mlastCameraPosition != null && mMap != null){
             mMap.moveCamera(CameraUpdateFactory.newCameraPosition(mlastCameraPosition));}
 
             //update map if resuming app after over 10 minutes away.
@@ -234,6 +254,19 @@ try {
     }
 
     public void onStop(){
+        CameraPosition myCam = mMap.getCameraPosition();
+        Context context = getApplicationContext();
+        SharedPreferences sharedPref = context.getSharedPreferences("TEST_PREF",Context.MODE_PRIVATE);
+        //.getPreferences(Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPref.edit();
+
+        editor.putString(getString(R.string.saved_camera_lat), String.valueOf(myCam.target.latitude));
+        editor.putString(getString(R.string.saved_camera_long), String.valueOf(myCam.target.longitude));
+        editor.putString(getString(R.string.saved_camera_zoom),String.valueOf(myCam.zoom));
+        editor.putString(getString(R.string.saved_camera_bearing),String.valueOf(myCam.bearing));
+        editor.putString(getString(R.string.saved_camera_tilt),String.valueOf(myCam.tilt));
+      
+        editor.commit();
         super.onStop();
         finish();
     }
@@ -273,6 +306,8 @@ try {
         mMap.setOnMyLocationButtonClickListener(this);
         mMap.setOnMyLocationClickListener(this);
         enableMyLocation();
+        if(mlastCameraPosition != null) {
+        mMap.moveCamera(CameraUpdateFactory.newCameraPosition(mlastCameraPosition));}
 try {
     boolean success = googleMap.setMapStyle(
             MapStyleOptions.loadRawResourceStyle(
