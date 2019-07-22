@@ -25,8 +25,8 @@ public abstract class PermissionUtils {
                                          String permission, boolean finishActivity) {
         if (ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)) {
             // Display a dialog with rationale.
-            PermissionUtils.RationaleDialog.newInstance(requestId, finishActivity)
-                    .show(activity.getSupportFragmentManager(), "dialog");
+          //  PermissionUtils.RationaleDialog.newInstance(requestId, finishActivity)
+            //        .show(activity.getSupportFragmentManager(), "dialog");
         } else {
             // Location permission has not been granted yet, request it.
             ActivityCompat.requestPermissions(activity, new String[]{permission}, requestId);
@@ -121,7 +121,7 @@ public abstract class PermissionUtils {
          * @param finishActivity Whether the calling Activity should be finished if the dialog is
          *                       cancelled.
          */
-        public static RationaleDialog newInstance(int requestCode, boolean finishActivity) {
+    /*    public static RationaleDialog newInstance(int requestCode, boolean finishActivity) {
             Bundle arguments = new Bundle();
             arguments.putInt(ARGUMENT_PERMISSION_REQUEST_CODE, requestCode);
             arguments.putBoolean(ARGUMENT_FINISH_ACTIVITY, finishActivity);
@@ -129,8 +129,9 @@ public abstract class PermissionUtils {
             dialog.setArguments(arguments);
             return dialog;
         }
+        */
 
-        @Override
+      /*  @Override
         public Dialog onCreateDialog(Bundle savedInstanceState) {
             Bundle arguments = getArguments();
             final int requestCode = arguments.getInt(ARGUMENT_PERMISSION_REQUEST_CODE);
@@ -152,7 +153,7 @@ public abstract class PermissionUtils {
                     .setNegativeButton(android.R.string.cancel, null)
                     .create();
         }
-
+*/
         @Override
         public void onDismiss(DialogInterface dialog) {
             super.onDismiss(dialog);

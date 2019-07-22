@@ -7,6 +7,8 @@ import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.Looper;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.Toast;
 
 import androidx.annotation.MainThread;
@@ -81,29 +83,56 @@ public boolean allTilesLoaded(){
     return true;
 }
 
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        //Remove title bar
+        this.requestWindowFeature(Window.FEATURE_NO_TITLE);
+
+        //Remove notification bar
+        this.getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
+
+
+        getSupportActionBar().hide();
+
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+
+        setContentView(R.layout.activity_maps);
+        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.map);
+        mapFragment.getMapAsync(this);
+    }
+
+
 public void animateMap(Activity activity) {
 
     activity.runOnUiThread(new Runnable() {
         public void run() {
 
-            if(allTilesLoaded()) {
-                for (int i = 0; i < tileOverlays.length; i++) {
+            try {
+                if (allTilesLoaded()) {
+                    for (int i = 0; i < tileOverlays.length; i++) {
 
-                    if (tileOverlays[i].getTransparency()== 0 && i < tileOverlays.length - 1) {
-                        //tileOverlays[i].setVisible(false);
-                        tileOverlays[i].setTransparency(1);
-                        //tileOverlays[i + 1].setVisible(true);
-                        tileOverlays[i + 1].setTransparency(0);
-                        break;
-                    } else if (tileOverlays[i].getTransparency()==0 && i == tileOverlays.length - 1) {
-                       // tileOverlays[i].setVisible(false);
-                       // tileOverlays[0].setVisible(true);
-                        tileOverlays[i].setTransparency(1);
-                        tileOverlays[0].setTransparency(0);
-                        break;
+                        if (tileOverlays[i].getTransparency() == 0 && i < tileOverlays.length - 1) {
+                            //tileOverlays[i].setVisible(false);
+                            tileOverlays[i].setTransparency(1);
+                            //tileOverlays[i + 1].setVisible(true);
+                            tileOverlays[i + 1].setTransparency(0);
+                            break;
+                        } else if (tileOverlays[i].getTransparency() == 0 && i == tileOverlays.length - 1) {
+                            // tileOverlays[i].setVisible(false);
+                            // tileOverlays[0].setVisible(true);
+                            tileOverlays[i].setTransparency(1);
+                            tileOverlays[0].setTransparency(0);
+                            break;
+                        }
                     }
                 }
             }
+            catch(Exception ex){ex.printStackTrace();}
 
         }
     });
@@ -276,18 +305,7 @@ try {
 
 
 //tileOverlay.clearTileCache(); every ten minutes.
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
 
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
-
-        setContentView(R.layout.activity_maps);
-        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
-        mapFragment.getMapAsync(this);
-    }
 
 
     /**
@@ -395,7 +413,7 @@ catch(Exception ex){
 
     @Override
     public boolean onMyLocationButtonClick() {
-        Toast.makeText(this, "MyLocation button clicked", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Centering Map on Your Current Location", Toast.LENGTH_SHORT).show();
         // Return false so that we don't consume the event and the default behavior still occurs
         // (the camera animates to the user's current position).
         try {
@@ -437,26 +455,8 @@ catch(Exception ex){
             enableMyLocation();
         } else {
             // Display the missing permission error dialog when the fragments resume.
-            mPermissionDenied = true;
+           // mPermissionDenied = true;
         }
-    }
-
-    @Override
-    protected void onResumeFragments() {
-        super.onResumeFragments();
-        if (mPermissionDenied) {
-            // Permission was not granted, display error dialog.
-            showMissingPermissionError();
-            mPermissionDenied = false;
-        }
-    }
-
-    /**
-     * Displays a dialog with error message explaining that the location permission is missing.
-     */
-    private void showMissingPermissionError() {
-        PermissionUtils.PermissionDeniedDialog
-                .newInstance(true).show(getSupportFragmentManager(), "dialog");
     }
 
 }
